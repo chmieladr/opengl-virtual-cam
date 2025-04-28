@@ -1,0 +1,17 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+
+# IDE-specific files
+.idea/
+.vs/
+.vscode/
+
+# Ignore user preferences
+*.user
+
+# Keep the defined run configurations and workspace settings
+!opengl-virtual-cam.slnlaunch.user
+!.idea/.idea.opengl-virtual-cam/.idea/workspace.xml
