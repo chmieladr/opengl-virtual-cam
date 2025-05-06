@@ -4,6 +4,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using ImGuiNET;
+using opengl_virtual_cam.imgui;
 using opengl_virtual_cam.scene;
 
 namespace opengl_virtual_cam;

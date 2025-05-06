@@ -1,4 +1,4 @@
-namespace opengl_virtual_cam;
+namespace opengl_virtual_cam.imgui;
 
 // ReSharper disable once InconsistentNaming
 public class GLState
