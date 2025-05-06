@@ -38,6 +38,13 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
     private const int FrameTimeHistoryLength = 60;
     private float _averageFrameTime;
     private float _fps;
+    
+    // Zoom management
+    private bool _previousEqualKeyPressed;
+    private bool _previousMinusKeyPressed;
+    private bool _previousKeypadAddPressed;
+    private bool _previousKeypadSubtractPressed;
+    private float _zoomStep = 1.5f;
 
     protected override void OnLoad()
     {
@@ -87,8 +94,27 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
             if (KeyboardState.IsKeyDown(Keys.Q)) _cam.AddRoll(-_rotation * (float)e.Time);
             if (KeyboardState.IsKeyDown(Keys.E)) _cam.AddRoll(_rotation * (float)e.Time);
 
-            // Zoom
+            // Zoom (scroll wheel)
             _cam.Fov = MathHelper.Clamp(_cam.Fov - MouseState.ScrollDelta.Y, 15f, 90f);
+            
+            // Zoom (keyboard)
+            var equalKeyPressed = KeyboardState.IsKeyDown(Keys.Equal);
+            var minusKeyPressed = KeyboardState.IsKeyDown(Keys.Minus);
+            var keypadAddPressed = KeyboardState.IsKeyDown(Keys.KeyPadAdd);
+            var keypadSubtractPressed = KeyboardState.IsKeyDown(Keys.KeyPadSubtract);
+            
+            if ((equalKeyPressed && !_previousEqualKeyPressed) || 
+                (keypadAddPressed && !_previousKeypadAddPressed))
+                _cam.Fov = MathHelper.Clamp(_cam.Fov - _zoomStep, 15f, 90f);
+            
+            if ((minusKeyPressed && !_previousMinusKeyPressed) || 
+                (keypadSubtractPressed && !_previousKeypadSubtractPressed))
+                _cam.Fov = MathHelper.Clamp(_cam.Fov + _zoomStep, 15f, 90f);
+            
+            _previousEqualKeyPressed = equalKeyPressed;
+            _previousMinusKeyPressed = minusKeyPressed;
+            _previousKeypadAddPressed = keypadAddPressed;
+            _previousKeypadSubtractPressed = keypadSubtractPressed;
         }
 
         _controller.Update(this, (float)e.Time);
