@@ -18,4 +18,5 @@ public static class Config
     public static float Yaw => 0f;
     public static float Pitch => 0f;
     public static float Roll => 0f;
+    public static float ZoomStep => 1.5f;
 }

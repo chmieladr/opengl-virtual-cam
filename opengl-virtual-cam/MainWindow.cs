@@ -2,7 +2,6 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
 using ImGuiNET;
 using opengl_virtual_cam.imgui;
 using opengl_virtual_cam.scene;
@@ -18,16 +17,13 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
     })
 {
     private readonly Camera _cam = new();
-    private int _shader;
-
-    // Movement speed
-    private readonly float _speed = Config.MovementSpeed;
-    private readonly float _rotation = Config.RotationSpeed;
-
+    private InputHandler? _inputHandler;
+    
     // Scene management
     private readonly List<IScene?> _scenes = [];
     private int _currentSceneIndex;
     private IScene? _currentScene;
+    private int _shader;
 
     // ImGui fields
     private ImGuiController _controller = null!;
@@ -38,13 +34,6 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
     private const int FrameTimeHistoryLength = 60;
     private float _averageFrameTime;
     private float _fps;
-    
-    // Zoom management
-    private bool _previousEqualKeyPressed;
-    private bool _previousMinusKeyPressed;
-    private bool _previousKeypadAddPressed;
-    private bool _previousKeypadSubtractPressed;
-    private float _zoomStep = 1.5f;
 
     protected override void OnLoad()
     {
@@ -52,7 +41,11 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
         GL.Enable(EnableCap.DepthTest);
         GL.LineWidth(2.0f);
 
+        // Initialize ImGui controller
         _controller = new ImGuiController(Size.X, Size.Y);
+        
+        // Initialize input handler
+        _inputHandler = new InputHandler(_cam);
 
         // Add all scenes
         _scenes.Add(new CuboidsScene());
@@ -72,51 +65,10 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
 
     protected override void OnUpdateFrame(FrameEventArgs e)
     {
-        var imguiWantsKeyboard = ImGui.GetIO().WantCaptureKeyboard;
-
-        if (!imguiWantsKeyboard)
-        {
-            // Movement
-            if (KeyboardState.IsKeyDown(Keys.W)) _cam.Move(_speed * (float)e.Time * _cam.Front);
-            if (KeyboardState.IsKeyDown(Keys.S)) _cam.Move(-_speed * (float)e.Time * _cam.Front);
-            if (KeyboardState.IsKeyDown(Keys.A))
-                _cam.Move(-Vector3.Normalize(Vector3.Cross(_cam.Front, _cam.Up)) * _speed * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.D))
-                _cam.Move(Vector3.Normalize(Vector3.Cross(_cam.Front, _cam.Up)) * _speed * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.Space)) _cam.Move(_cam.Up * _speed * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.LeftShift)) _cam.Move(-_cam.Up * _speed * (float)e.Time);
-
-            // Rotation
-            if (KeyboardState.IsKeyDown(Keys.Left)) _cam.AddYaw(-_rotation * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.Right)) _cam.AddYaw(_rotation * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.Up)) _cam.AddPitch(_rotation * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.Down)) _cam.AddPitch(-_rotation * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.Q)) _cam.AddRoll(-_rotation * (float)e.Time);
-            if (KeyboardState.IsKeyDown(Keys.E)) _cam.AddRoll(_rotation * (float)e.Time);
-
-            // Zoom (scroll wheel)
-            _cam.Fov = MathHelper.Clamp(_cam.Fov - MouseState.ScrollDelta.Y, 15f, 90f);
-            
-            // Zoom (keyboard)
-            var equalKeyPressed = KeyboardState.IsKeyDown(Keys.Equal);
-            var minusKeyPressed = KeyboardState.IsKeyDown(Keys.Minus);
-            var keypadAddPressed = KeyboardState.IsKeyDown(Keys.KeyPadAdd);
-            var keypadSubtractPressed = KeyboardState.IsKeyDown(Keys.KeyPadSubtract);
-            
-            if ((equalKeyPressed && !_previousEqualKeyPressed) || 
-                (keypadAddPressed && !_previousKeypadAddPressed))
-                _cam.Fov = MathHelper.Clamp(_cam.Fov - _zoomStep, 15f, 90f);
-            
-            if ((minusKeyPressed && !_previousMinusKeyPressed) || 
-                (keypadSubtractPressed && !_previousKeypadSubtractPressed))
-                _cam.Fov = MathHelper.Clamp(_cam.Fov + _zoomStep, 15f, 90f);
-            
-            _previousEqualKeyPressed = equalKeyPressed;
-            _previousMinusKeyPressed = minusKeyPressed;
-            _previousKeypadAddPressed = keypadAddPressed;
-            _previousKeypadSubtractPressed = keypadSubtractPressed;
-        }
-
+        // Process all inputs through the InputHandler
+        _inputHandler!.ProcessInput(KeyboardState, MouseState, (float)e.Time);
+        
+        // Update ImGui controller
         _controller.Update(this, (float)e.Time);
     }
 
@@ -157,9 +109,8 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
     private void RenderFpsCounter()
     {
         // We skip the render if the side panel is hidden
-        if (!_showSidePanel)
-            return;
-        
+        if (!_showSidePanel) return;
+
         const ImGuiWindowFlags fpsWindowFlags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.AlwaysAutoResize |
                                                 ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoMove |
                                                 ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoSavedSettings;
@@ -217,9 +168,9 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
             _currentScene = _scenes[_currentSceneIndex];
             _shader = _currentScene!.Initialize();
         }
-        
+
         ImGui.Separator();
-        
+
         // Position inputs
         ImGui.Text("Position:");
         var posX = _cam.Position.X;
@@ -274,7 +225,7 @@ public class MainWindow() : GameWindow(GameWindowSettings.Default,
         // Reset button
         if (ImGui.Button("Reset Camera", new System.Numerics.Vector2(ImGui.GetContentRegionAvail().X, 30)))
             ResetCamera();
-        
+
         ImGui.End();
     }
 
